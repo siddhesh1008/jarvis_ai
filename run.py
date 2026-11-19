@@ -38,6 +38,7 @@ LOG_DIR = os.path.join(HERE, "logs")
 LOG_FILE = os.path.join(LOG_DIR, "jarvis.log")
 IS_WINDOWS = os.name == "nt"
 IS_LINUX = sys.platform.startswith("linux")
+SETUP_NEEDED = 2          # Jarvis's exit code for "set something up first" (same as jarvis/__main__.py)
 OWN_FLAGS = ("--update", "--setup-only", "--windowed", "--no-autostart", "--test")
 
 
@@ -208,6 +209,9 @@ def run_with_watchdog(cmd, env, log):
             return
         if code == 0:
             return
+        if code == SETUP_NEEDED:
+            say("Jarvis needs setting up first (see the message above / logs/jarvis.log). Not restarting.")
+            return
         if code < 0 and -code in (signal.SIGTERM, signal.SIGINT):
             return
         recent = [t for t in recent if time.time() - t < 120] + [time.time()]
@@ -233,7 +237,8 @@ def main():
     ensure_packages()
     if test:
         run_tests(args)
-    if pi and autostart:
+    one_shot = any(a in args for a in ("--check", "--list-mics", "--ask"))
+    if pi and autostart and not one_shot:
         ensure_pi_autostart()
     if not os.path.exists(os.path.join(HERE, "local.json")):
         say("No local.json yet: copy local.example.json to local.json and paste your Picovoice AccessKey.")
@@ -244,9 +249,10 @@ def main():
         restart_on_screen()
         return
 
-    one_shot = any(a in args for a in ("--check", "--list-mics", "--ask"))
     env = os.environ.copy()
-    if pi and not windowed and not one_shot and "--fullscreen" not in args:
+    if pi and "WAYLAND_DISPLAY" not in env:
+        env = desktop_env() or env                     # started over SSH: show the window on the Pi's screen
+    if pi and not windowed and "--fullscreen" not in args and "--check" not in args and "--list-mics" not in args:
         args.append("--fullscreen")
     if IS_LINUX and env.get("WAYLAND_DISPLAY") and "SDL_VIDEODRIVER" not in env:
         env["SDL_VIDEODRIVER"] = "wayland"            # native Wayland, like Sky Radar (real touch events)

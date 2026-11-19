@@ -50,6 +50,15 @@ def test_dismissal_phrase_closes_without_asking_the_model(make_app, question, ph
     assert brain.questions == []
 
 
+def test_noise_during_follow_up_closes_quietly(make_app, question):
+    """After an answer, a cough or a door (transcribed as nothing) should not show an error."""
+    mic = FakeMic(np.concatenate([speech(question), speech(question)]))
+    stt = FakeSTT(["What is the tallest mountain in Europe?", ""])
+    result = make_app(mic=mic, stt=stt).session()
+    assert result.reason == "no_follow_up" and result.message == ""
+    assert len(result.turns) == 1
+
+
 def test_empty_transcription_says_it_did_not_catch_that(make_app, question):
     result = make_app(mic=FakeMic(speech(question)), stt=FakeSTT([""])).session()
     assert result.reason == "no_speech"

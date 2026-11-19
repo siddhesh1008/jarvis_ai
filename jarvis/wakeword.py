@@ -61,6 +61,10 @@ class AnyWake:
             d.close()
 
 
+class NoWakeSource(Exception):
+    """Nothing can wake Jarvis (no AccessKey, no terminal). A setup problem, not worth restarting for."""
+
+
 def make_wake(cfg, access_key):
     detectors = []
     if access_key:
@@ -69,6 +73,6 @@ def make_wake(cfg, access_key):
     if sys.stdin is not None and sys.stdin.isatty():
         detectors.append(EnterKeyWake())
     if not detectors:
-        raise SystemExit("No Picovoice AccessKey and no terminal for the Enter key: nothing can wake Jarvis. "
-                         "Put your key in local.json (see README).")
+        raise NoWakeSource("No Picovoice AccessKey and no terminal for the Enter key: nothing can wake Jarvis. "
+                           "Put your key in local.json (see README).")
     return detectors[0] if len(detectors) == 1 else AnyWake(detectors)

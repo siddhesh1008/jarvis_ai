@@ -10,6 +10,8 @@ import sys
 
 from .config import load_config
 
+SETUP_NEEDED = 2          # exit code: something must be set up first; run.py won't restart Jarvis for it
+
 
 def build(cfg):
     from .app import Jarvis
@@ -97,8 +99,13 @@ def main(argv=None):
         finally:
             app.mic.stop()
         return 0
-    from .wakeword import make_wake
-    app.run(make_wake(cfg, cfg.get("picovoice_access_key")))
+    from .wakeword import NoWakeSource, make_wake
+    try:
+        wake = make_wake(cfg, cfg.get("picovoice_access_key"))
+    except NoWakeSource as e:
+        print(f"[jarvis] {e}", flush=True)
+        return SETUP_NEEDED
+    app.run(wake)
     return 0
 
 

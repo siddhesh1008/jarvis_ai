@@ -122,3 +122,4 @@ def test_system_prompt_has_the_date():
     prompt = llm.system_prompt(t)
     assert "Thursday 19 November 2026, 15:30" in prompt
     assert "Jarvis" in prompt and "no markdown" in prompt
+    assert "Never claim abilities you don't have" in prompt

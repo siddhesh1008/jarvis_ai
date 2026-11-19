@@ -78,8 +78,21 @@ def test_no_key_and_no_terminal_is_a_clear_error(monkeypatch):
         def isatty(self):
             return False
     monkeypatch.setattr(sys, "stdin", NoTTY())
-    with pytest.raises(SystemExit, match="local.json"):
+    with pytest.raises(wakeword.NoWakeSource, match="local.json"):
         wakeword.make_wake({}, access_key=None)
+
+
+def test_missing_key_exits_with_setup_code_so_run_py_does_not_restart(monkeypatch, tmp_path):
+    import jarvis.__main__ as cli
+    import run
+
+    class NoTTY:
+        def isatty(self):
+            return False
+    monkeypatch.setattr(sys, "stdin", NoTTY())
+    monkeypatch.setattr(cli, "build", lambda cfg: object())
+    monkeypatch.setattr(cli, "load_config", lambda argv: {})
+    assert cli.main([]) == cli.SETUP_NEEDED == run.SETUP_NEEDED
 
 
 def test_porcupine_has_jarvis_for_pi_and_pc():

@@ -129,7 +129,7 @@ class Jarvis:
         self.screen.open()
         state, heard, answer = "listening", "", ""
         rec = self.recorder(cfg.get("no_speech_timeout", 5))
-        job, until, t_mark = None, 0.0, self.clock()
+        job, until, t_mark, follow_up = None, 0.0, self.clock(), False
 
         def show_then_close(new_state, message, seconds, reason):
             nonlocal state, answer, until
@@ -153,6 +153,7 @@ class Jarvis:
                     if rec.state == "speaking" and state == "follow_up":
                         state, heard, answer = "listening", "", ""          # new question: clear the screen
                     if rec.state == "done":
+                        follow_up = bool(result.turns)              # not the first question of this session
                         state, job, t_mark = "transcribing", Job(self.stt.transcribe, rec.pcm()), now
                     elif rec.state == "timeout":
                         if state == "follow_up":
@@ -169,6 +170,9 @@ class Jarvis:
                     else:
                         text = job.result or ""
                         log(f"Heard ({now - t_mark:.1f}s): {text!r}")
+                        if not text and follow_up:
+                            result.reason = "no_follow_up"          # just a noise after the answer: close quietly
+                            break
                         if not text:
                             show_then_close("error", "Sorry, I didn't catch that.", cfg.get("message_seconds", 2.5),
                                             "no_speech")
