@@ -1,0 +1,23 @@
+{
+  "wake_word": "jarvis",
+  "wake_sensitivity": 0.6,
+  "input_device": null,
+
+  "stt_url": "http://192.168.2.163:8000/v1/audio/transcriptions",
+  "stt_language": "en",
+  "stt_timeout": 30,
+
+  "ollama_url": "http://192.168.2.163:11434",
+  "model": "llama3.2:3b",
+  "keep_alive": "30m",
+  "max_history_turns": 6,
+
+  "vad_aggressiveness": 2,
+  "no_speech_timeout": 5,
+  "silence_end_ms": 800,
+  "max_record_seconds": 15,
+  "follow_up_seconds": 6,
+
+  "fullscreen": false,
+  "window_size": 720
+}

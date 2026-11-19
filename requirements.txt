@@ -1,0 +1,6 @@
+pygame-ce>=2.5
+pvporcupine>=4.0
+sounddevice>=0.5
+webrtcvad-wheels>=2.0.14
+numpy>=1.26
+requests>=2.31

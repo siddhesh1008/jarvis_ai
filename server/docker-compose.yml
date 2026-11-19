@@ -1,0 +1,17 @@
+# Jarvis services for the home server (Bosgame P5). Ollama already runs separately.
+#   docker compose up -d --build
+services:
+  jarvis-stt:
+    build: ./stt
+    container_name: jarvis-stt
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      WHISPER_MODEL: small.en     # tiny.en / base.en = faster, medium.en = more accurate
+      WHISPER_COMPUTE: int8
+    volumes:
+      - whisper-models:/models
+
+volumes:
+  whisper-models:
