@@ -1,6 +1,8 @@
 {
-  "wake_word": "jarvis",
-  "wake_sensitivity": 0.6,
+  "wake_engine": "openwakeword",
+  "wake_model": "hey_jarvis_v0.1",
+  "wake_threshold": 0.5,
+  "wake_patience": 1,
   "input_device": null,
 
   "stt_url": "http://192.168.2.163:8000/v1/audio/transcriptions",

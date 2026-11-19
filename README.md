@@ -20,7 +20,7 @@ The Pi only does the light work (wake word, recording, screen). The heavy work r
 
 | Step | What | Where |
 |---|---|---|
-| Wake word | Porcupine, built-in "Jarvis" | Pi |
+| Wake word | [openWakeWord](https://github.com/dscripka/openWakeWord) "Hey Jarvis" model (free, offline, no account) | Pi |
 | End of speech | webrtcvad + noise gate (stops ~0.8 s after you stop talking) | Pi |
 | Speech to text | faster-whisper (`server/`, Docker, port 8000) | P5 |
 | Answer | Ollama `llama3.2:3b` (port 11434) | P5 |
@@ -42,26 +42,25 @@ docker logs -f jarvis-stt          # first start downloads the Whisper model, wa
 `http://192.168.2.163:8000/health` should then show `{"ok":true,...}`.
 The model is set in `server/docker-compose.yml` (`small.en`; `base.en` is faster, `medium.en` more accurate).
 
-## 2. Picovoice AccessKey (once per device)
+## 2. Wake word
 
-1. Sign up for free at [console.picovoice.ai](https://console.picovoice.ai) and copy your AccessKey.
-2. Copy `local.example.json` to `local.json` and paste the key in. `local.json` is git-ignored, so it
-   never ends up on GitHub; create it on the Pi too.
-
-Without a key you can still test from a terminal: press **Enter** to wake Jarvis.
+Nothing to set up: the first `run.py` downloads openWakeWord's models (about 4 MB) into `models/`.
+Its "Hey Jarvis" model also reacts to a plain "Jarvis" in tests; if it misses you or wakes by itself,
+change `wake_threshold` (lower = wakes more easily). You can train your own model later with
+openWakeWord's training notebook and put it in `models/` (see `jarvis/wakeword.py`).
+In a terminal, pressing **Enter** also wakes Jarvis.
 
 ## 3. Raspberry Pi
 
 ```
 cd ~ && git clone https://github.com/siddhesh1008/jarvis_ai.git
 cd jarvis_ai
-cp local.example.json local.json && nano local.json      # paste the AccessKey
-python3 run.py --check                                   # mic, key, speech server, Ollama
+python3 run.py --check          # mic, wake word, speech server, Ollama
 python3 run.py
 ```
 
-The first `run.py` installs everything, adds Jarvis to the desktop autostart (next to Sky Radar's line in
-`~/.config/labwc/autostart`) and starts it. Jarvis has no window until you say "Jarvis".
+No `sudo` needed. The first `run.py` installs everything, adds Jarvis to the desktop autostart (next to
+Sky Radar's line in `~/.config/labwc/autostart`) and starts it. Jarvis has no window until you say "Hey Jarvis".
 When started at boot it writes its log to `logs/jarvis.log`.
 
 **Update the Pi after pushing changes** (from your PC):
@@ -84,13 +83,13 @@ py run.py --ask "What's the capital of Peru?"     # test screen + AI without the
 
 ## Using it
 
-Say "Jarvis", wait for the window, then ask. After the answer, Jarvis listens for about 6 s for a follow-up
+Say "Hey Jarvis" (or just "Jarvis"), wait for the window, then ask. After the answer, Jarvis listens for about 6 s for a follow-up
 (no wake word needed). "Thanks", "never mind", "stop", silence, a tap on the screen or Esc closes it.
 
 ## Tests
 
 ```
-py run.py --test               # all tests, no mic / screen / server / key needed (about 2 s)
+py run.py --test               # all tests, no mic / screen / server needed (about 3 s)
 py run.py --test -m live       # also checks the real P5: Ollama and the speech server
 ```
 
@@ -104,7 +103,9 @@ clients' requests to the P5.
 
 | Key | Meaning |
 |---|---|
-| `wake_sensitivity` | 0–1. Higher catches more "Jarvis"es but also more false wakes |
+| `wake_model` | openWakeWord model in `models/` (`hey_jarvis_v0.1`, or your own trained one) |
+| `wake_threshold` | 0–1. Lower wakes more easily (and more often by mistake); default 0.5 |
+| `wake_patience` | how many 80 ms steps in a row must be above the threshold (raise to 2–3 against false wakes) |
 | `input_device` | mic number from `--list-mics`, `null` = default mic |
 | `stt_url` | speech server on the P5 |
 | `ollama_url`, `model` | Ollama on the P5 and the model (`llama3.2:3b` ≈ 2–3 s; `llama3.1:8b` ≈ 5 s, fewer made-up facts) |
@@ -124,13 +125,14 @@ jarvis/
   __main__.py           command line (python -m jarvis)
   config.py             loading settings
   app.py                the conversation state machine (wake → listen → transcribe → think → show → follow-up)
-  wakeword.py           wake word engines (only file that knows Porcupine)
+  wakeword.py           wake word: openWakeWord models run with onnxruntime (only file that knows the engine)
   audio.py              microphone + end-of-speech detection
   stt.py                speech-to-text client
   llm.py                Ollama client + Jarvis's personality (system prompt)
   screen.py             the round window
+models/                 wake word models (downloaded by run.py, git-ignored)
 server/                 Docker services for the P5 (speech-to-text now; text-to-speech later)
-tests/                  automated tests (+ fixtures/question.wav)
+tests/                  automated tests (+ fixtures/: recorded "Hey Jarvis", "Jarvis", a question, other speech)
 ```
 
 ### Where new things go
@@ -140,7 +142,7 @@ tests/                  automated tests (+ fixtures/question.wav)
 | Change how Jarvis talks | `SYSTEM_PROMPT` in `jarvis/llm.py` |
 | Add a skill (timer, weather, Sky Radar planes, …) | a new `jarvis/skills/` package, called from `jarvis/llm.py` (phase 2) |
 | Speak answers | a new `jarvis/tts.py` + a `server/tts/` container, used in `app.py` when the answer is done |
-| Another wake word engine | a new class in `jarvis/wakeword.py` with `process(frame)`, `close()`, `name` |
+| Another wake word / engine | a model file in `models/` + `wake_model`, or a new class in `jarvis/wakeword.py` with `process(frame)`, `close()`, `name` |
 | A new screen state | `STATE_STYLE` in `jarvis/screen.py` and the state machine in `jarvis/app.py` |
 | A new server service | `server/<name>/` + an entry in `server/docker-compose.yml` |
 

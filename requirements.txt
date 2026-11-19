@@ -1,5 +1,5 @@
 pygame-ce>=2.5
-pvporcupine>=4.0
+onnxruntime>=1.17
 pvrecorder>=1.2
 webrtcvad-wheels>=2.0.14
 numpy>=1.26

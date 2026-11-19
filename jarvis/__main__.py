@@ -53,16 +53,19 @@ def check(cfg):
     except Exception as e:
         line(False, f"microphone failed ({e})")
     print("Wake word:")
-    key = cfg.get("picovoice_access_key")
-    if not key:
-        line(False, "no Picovoice AccessKey in local.json (the Enter key still works in a terminal)")
-    else:
-        try:
-            from .wakeword import PorcupineWake
-            PorcupineWake(key, cfg.get("wake_word", "jarvis")).close()
-            line(True, "Porcupine started with your AccessKey")
-        except Exception as e:
-            line(False, f"Porcupine failed: {e}")
+    try:
+        import time
+        import numpy as np
+        from .wakeword import OpenWakeWord
+        wake = OpenWakeWord(cfg.get("wake_model", "hey_jarvis_v0.1"), cfg.get("wake_threshold", 0.5))
+        start = time.perf_counter()
+        for _ in range(25):                                   # 2 s of silence
+            wake.scores(np.zeros(1280, dtype=np.int16))
+        per_step = (time.perf_counter() - start) / 25 * 1000
+        line(per_step < 60, f"{wake.name} loaded, {per_step:.0f} ms of CPU per 80 ms of audio "
+             f"({per_step / 80:.0%} of one core)")
+    except Exception as e:
+        line(False, f"openWakeWord failed: {e}")
     print("Speech server:")
     try:
         from .stt import SpeechToText
@@ -101,7 +104,7 @@ def main(argv=None):
         return 0
     from .wakeword import NoWakeSource, make_wake
     try:
-        wake = make_wake(cfg, cfg.get("picovoice_access_key"))
+        wake = make_wake(cfg)
     except NoWakeSource as e:
         print(f"[jarvis] {e}", flush=True)
         return SETUP_NEEDED

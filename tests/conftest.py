@@ -1,6 +1,7 @@
 """Shared test helpers: fake microphone, fake speech-to-text, fake model and a headless screen.
 
-The tests never need a microphone, a display, the Picovoice key or the P5 server.
+The tests never need a microphone, a display or the P5 server (the wake word tests download
+openWakeWord's models into models/ once, and are skipped when offline).
 Tests marked `live` do talk to the real P5 and are skipped unless you run:  pytest -m live
 """
 import os

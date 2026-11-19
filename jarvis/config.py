@@ -6,7 +6,6 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ENV_OVERRIDES = {                     # environment variable -> config key
-    "PICOVOICE_ACCESS_KEY": "picovoice_access_key",
     "JARVIS_MODEL": "model",
     "JARVIS_INPUT_DEVICE": "input_device",
 }

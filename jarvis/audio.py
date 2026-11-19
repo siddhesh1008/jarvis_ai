@@ -1,8 +1,8 @@
 """Microphone input and end-of-speech detection.
 
-Mic delivers 16 kHz mono int16 frames of a fixed length (512 samples = 32 ms, what Porcupine wants).
-It uses pvrecorder (from Picovoice, like Porcupine): it ships its own audio library for the Pi and
-Windows, so nothing has to be installed on the system, and it always records 16 kHz mono.
+Mic delivers 16 kHz mono int16 frames of a fixed length (512 samples = 32 ms).
+It uses pvrecorder (open source, Apache 2.0, no account or key needed): it ships its own audio library
+for the Pi and Windows, so nothing has to be installed on the system, and it always records 16 kHz mono.
 
 Recorder decides when the user has started and stopped talking (webrtcvad), and returns the
 recorded speech as raw 16 kHz int16 bytes.

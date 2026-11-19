@@ -1,3 +1,5 @@
 {
-  "picovoice_access_key": "paste-your-key-from-console.picovoice.ai-here"
+  "_comment": "Copy to local.json (git-ignored) to change settings on one device only, e.g. the mic or the model.",
+  "input_device": "USB",
+  "model": "llama3.1:8b"
 }

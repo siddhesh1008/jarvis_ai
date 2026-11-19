@@ -105,6 +105,15 @@ def ensure_packages(requirements=REQUIREMENTS, stamp=STAMP):
         f.write(wanted)
 
 
+def ensure_wake_models():
+    """Download the openWakeWord models into models/ (once; about 4 MB)."""
+    code = ("from jarvis.config import load_config; from jarvis.wakeword import ensure_models; "
+            "cfg = load_config(); "
+            "ensure_models(cfg.get('wake_model', 'hey_jarvis_v0.1'), log=lambda m: print('[jarvis] ' + m))")
+    if subprocess.call([venv_python(), "-c", code], cwd=HERE) != 0:
+        say("Couldn't download the wake word models yet (no internet?). Jarvis will try again when it starts.")
+
+
 def ensure_pi_autostart():
     """Start Jarvis when the Pi's desktop starts (Raspberry Pi OS Bookworm, labwc)."""
     path = os.path.expanduser("~/.config/labwc/autostart")
@@ -235,13 +244,12 @@ def main():
 
     ensure_venv()
     ensure_packages()
+    ensure_wake_models()
     if test:
         run_tests(args)
     one_shot = any(a in args for a in ("--check", "--list-mics", "--ask"))
     if pi and autostart and not one_shot:
         ensure_pi_autostart()
-    if not os.path.exists(os.path.join(HERE, "local.json")):
-        say("No local.json yet: copy local.example.json to local.json and paste your Picovoice AccessKey.")
     if setup_only:
         say("Setup complete.")
         return
