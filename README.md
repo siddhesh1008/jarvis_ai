@@ -66,7 +66,7 @@ When started at boot it writes its log to `logs/jarvis.log`.
 **Update the Pi after pushing changes** (from your PC):
 
 ```
-ssh sky-radar@sky-radar.local "python3 ~/jarvis_ai/run.py --update"
+ssh jarvis@jarvis.local "python3 ~/jarvis_ai/run.py --update"
 ```
 
 `--update` pulls from GitHub, installs anything new and restarts Jarvis on the Pi's screen.

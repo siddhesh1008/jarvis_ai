@@ -12,7 +12,7 @@
 Options:
     --update        download the newest version from GitHub (git pull), set up anything new and
                     restart Jarvis on the Pi's screen. From another computer:
-                      ssh sky-radar@sky-radar.local "python3 ~/jarvis_ai/run.py --update"
+                      ssh jarvis@jarvis.local "python3 ~/jarvis_ai/run.py --update"
     --setup-only    set everything up, but don't start Jarvis
     --windowed      start in a window, even on a Pi
     --no-autostart  don't add Jarvis to the Pi's autostart
