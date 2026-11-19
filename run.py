@@ -104,15 +104,6 @@ def ensure_packages(requirements=REQUIREMENTS, stamp=STAMP):
         f.write(wanted)
 
 
-def ensure_portaudio():
-    """sounddevice (the microphone) needs the system's PortAudio library on Linux."""
-    import ctypes.util
-    if not IS_LINUX or ctypes.util.find_library("portaudio"):
-        return
-    if not apt_install("libportaudio2"):
-        fail("The microphone library is missing. Install it once with:  sudo apt install -y libportaudio2")
-
-
 def ensure_pi_autostart():
     """Start Jarvis when the Pi's desktop starts (Raspberry Pi OS Bookworm, labwc)."""
     path = os.path.expanduser("~/.config/labwc/autostart")
@@ -240,7 +231,6 @@ def main():
 
     ensure_venv()
     ensure_packages()
-    ensure_portaudio()
     if test:
         run_tests(args)
     if pi and autostart:

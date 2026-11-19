@@ -21,13 +21,11 @@ def build(cfg):
 
 
 def list_mics():
-    import sounddevice as sd
-    default_in = sd.default.device[0]
-    for i, d in enumerate(sd.query_devices()):
-        if d["max_input_channels"] > 0:
-            mark = "*" if i == default_in else " "
-            print(f" {mark} {i:3d}  {d['name']}  ({int(d['default_samplerate'])} Hz)")
-    print(" * = default. Put the number in config.json as \"input_device\" to use another mic.")
+    from .audio import list_devices
+    for i, name in enumerate(list_devices()):
+        print(f"  {i:3d}  {name}")
+    print('Set "input_device" in config.json or local.json to a number above, or to part of a name '
+          '(e.g. "USB"). null = the system default.')
 
 
 def check(cfg):
@@ -40,10 +38,18 @@ def check(cfg):
 
     print("Microphone:")
     try:
-        import sounddevice as sd
-        line(True, sd.query_devices(cfg.get("input_device"), "input")["name"])
+        import time
+        from .audio import Mic, level
+        mic = Mic(device=cfg.get("input_device"))
+        mic.start()
+        time.sleep(1.5)
+        frames = mic.drain()
+        mic.stop()
+        loudest = max((level(f) for f in frames), default=0.0)
+        line(len(frames) > 30, f"{mic.name}: {len(frames)} frames in 1.5 s, loudest {loudest:.3f}"
+             + ("  (very quiet: is it the right mic?)" if loudest < 0.002 else ""))
     except Exception as e:
-        line(False, f"no microphone found ({e})")
+        line(False, f"microphone failed ({e})")
     print("Wake word:")
     key = cfg.get("picovoice_access_key")
     if not key:

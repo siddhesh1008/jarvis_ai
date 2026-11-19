@@ -1,7 +1,8 @@
 """Microphone input and end-of-speech detection.
 
 Mic delivers 16 kHz mono int16 frames of a fixed length (512 samples = 32 ms, what Porcupine wants).
-If the microphone can't record at 16 kHz directly, it records at its own rate and resamples.
+It uses pvrecorder (from Picovoice, like Porcupine): it ships its own audio library for the Pi and
+Windows, so nothing has to be installed on the system, and it always records 16 kHz mono.
 
 Recorder decides when the user has started and stopped talking (webrtcvad), and returns the
 recorded speech as raw 16 kHz int16 bytes.
@@ -9,13 +10,31 @@ recorded speech as raw 16 kHz int16 bytes.
 import collections
 import io
 import queue
+import threading
 import wave
 
 import numpy as np
-import sounddevice as sd
 import webrtcvad
 
 RATE = 16000
+
+
+def list_devices():
+    from pvrecorder import PvRecorder
+    return PvRecorder.get_available_devices()
+
+
+def device_index(device, names=None):
+    """config "input_device": null = default, a number = that index, text = first mic whose name contains it."""
+    if device is None or device == "":
+        return -1
+    if isinstance(device, int):
+        return device
+    names = list_devices() if names is None else names
+    for i, name in enumerate(names):
+        if str(device).lower() in name.lower():
+            return i
+    raise ValueError(f"No microphone matching {device!r}. Available: {names}")
 
 
 class Mic:
@@ -24,30 +43,31 @@ class Mic:
         self.device = device
         self.q = queue.Queue(maxsize=400)          # ~13 s of audio; old frames are dropped if nobody reads
         self._buf = np.zeros(0, dtype=np.int16)
-        self.stream = None
-        self.native_rate = RATE
+        self.recorder = None
+        self._running = False
+        self._thread = None
+        self.name = ""
 
     def start(self):
-        try:
-            self._open(RATE)
-        except Exception:
-            # Some mics only do 44.1/48 kHz: record at their rate and resample to 16 kHz ourselves
-            info = sd.query_devices(self.device, "input")
-            self._open(int(info["default_samplerate"]))
+        from pvrecorder import PvRecorder
+        self.recorder = PvRecorder(frame_length=self.frame_length, device_index=device_index(self.device))
+        self.name = self.recorder.selected_device
+        self.recorder.start()
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
 
-    def _open(self, rate):
-        self.native_rate = rate
-        block = int(round(self.frame_length * rate / RATE))
-        self.stream = sd.InputStream(samplerate=rate, channels=1, dtype="int16", blocksize=block,
-                                     device=self.device, callback=self._callback)
-        self.stream.start()
+    def _loop(self):
+        while self._running:
+            try:
+                samples = self.recorder.read()
+            except Exception:
+                if self._running:
+                    raise
+                return
+            self._push(np.asarray(samples, dtype=np.int16))
 
-    def _callback(self, indata, frames, time_info, status):
-        samples = indata[:, 0].copy()
-        if self.native_rate != RATE:
-            n = int(round(len(samples) * RATE / self.native_rate))
-            x = np.linspace(0, len(samples) - 1, n)
-            samples = np.interp(x, np.arange(len(samples)), samples).astype(np.int16)
+    def _push(self, samples):
         self._buf = np.concatenate([self._buf, samples])
         while len(self._buf) >= self.frame_length:
             frame, self._buf = self._buf[:self.frame_length], self._buf[self.frame_length:]
@@ -80,10 +100,13 @@ class Mic:
         self.drain()
 
     def stop(self):
-        if self.stream:
-            self.stream.stop()
-            self.stream.close()
-            self.stream = None
+        self._running = False
+        if self.recorder:
+            self.recorder.stop()
+            if self._thread:
+                self._thread.join(timeout=1)
+            self.recorder.delete()
+            self.recorder = None
 
 
 def level(frame):

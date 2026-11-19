@@ -23,7 +23,7 @@ def load_config(root=ROOT, argv=(), env=None):
     for var, key in ENV_OVERRIDES.items():
         if env.get(var):
             value = env[var]
-            cfg[key] = int(value) if key == "input_device" and value.isdigit() else value
+            cfg[key] = int(value) if key == "input_device" and value.lstrip("-").isdigit() else value
     if "--fullscreen" in argv:
         cfg["fullscreen"] = True
     return cfg

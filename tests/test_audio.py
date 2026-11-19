@@ -3,9 +3,10 @@ import io
 import wave
 
 import numpy as np
+import pytest
 
 from conftest import frames, noise
-from jarvis.audio import Mic, Recorder, level, to_wav
+from jarvis.audio import Mic, Recorder, device_index, level, to_wav
 
 
 def run(rec, signal):
@@ -77,27 +78,65 @@ def test_wav_roundtrip(question):
 
 def test_mic_rechunks_into_512_sample_frames():
     mic = Mic()
-    block = np.arange(700, dtype=np.int16).reshape(-1, 1)
-    mic._callback(block, 700, None, None)
-    mic._callback(block, 700, None, None)
+    block = np.arange(700, dtype=np.int16)
+    mic._push(block)
+    mic._push(block)
     got = mic.drain()
     assert [len(f) for f in got] == [512, 512]
     assert got[0][0] == 0 and got[1][0] == 512 % 700
 
 
-def test_mic_resamples_48k_to_16k():
-    mic = Mic()
-    mic.native_rate = 48000
-    one_second = np.zeros((48000, 1), dtype=np.int16)
-    mic._callback(one_second, 48000, None, None)
-    total = sum(len(f) for f in mic.drain()) + len(mic._buf)
-    assert total == 16000
-
-
 def test_mic_drops_oldest_frames_when_nobody_reads():
     mic = Mic()
     for i in range(mic.q.maxsize + 10):
-        mic._callback(np.full((512, 1), i % 30000, dtype=np.int16), 512, None, None)
+        mic._push(np.full(512, i % 30000, dtype=np.int16))
     got = mic.drain()
     assert len(got) == mic.q.maxsize
     assert got[-1][0] == (mic.q.maxsize + 9) % 30000            # newest audio kept
+
+
+def test_mic_reads_from_pvrecorder_in_the_background(monkeypatch):
+    import sys
+    import time
+    import types
+
+    class FakeRecorder:
+        instances = []
+
+        def __init__(self, frame_length, device_index):
+            self.frame_length, self.device_index = frame_length, device_index
+            self.selected_device, self.running, self.deleted = "Fake USB mic", False, False
+            FakeRecorder.instances.append(self)
+
+        def start(self):
+            self.running = True
+
+        def read(self):
+            time.sleep(0.005)
+            return [7] * self.frame_length
+
+        def stop(self):
+            self.running = False
+
+        def delete(self):
+            self.deleted = True
+
+    monkeypatch.setitem(sys.modules, "pvrecorder", types.SimpleNamespace(PvRecorder=FakeRecorder))
+    mic = Mic(device=2)
+    mic.start()
+    frame = mic.read(timeout=1)
+    mic.stop()
+    rec = FakeRecorder.instances[-1]
+    assert frame is not None and len(frame) == 512 and frame[0] == 7
+    assert rec.device_index == 2 and mic.name == "Fake USB mic" and rec.deleted
+
+
+@pytest.mark.parametrize("device,expected", [(None, -1), ("", -1), (3, 3), ("usb", 1), ("Webcam", 2)])
+def test_choosing_a_mic_by_number_or_name(device, expected):
+    names = ["Built-in Microphone", "USB PnP Sound Device", "HD Webcam Mic"]
+    assert device_index(device, names) == expected
+
+
+def test_unknown_mic_name_is_a_clear_error():
+    with pytest.raises(ValueError, match="No microphone matching"):
+        device_index("bluetooth", ["USB PnP Sound Device"])
