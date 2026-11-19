@@ -95,8 +95,6 @@ def ensure_packages(requirements=REQUIREMENTS, stamp=STAMP):
                 return
     except OSError:
         pass
-    if IS_LINUX and subprocess.call(["sh", "-c", "ldconfig -p | grep -q libportaudio"]) != 0:
-        apt_install("libportaudio2")               # sounddevice needs the PortAudio library
     py = venv_python()
     say(f"Installing packages from {os.path.basename(requirements)} (the first time can take a minute) ...")
     subprocess.call([py, "-m", "pip", "install", "--upgrade", "--quiet", "pip"])
@@ -104,6 +102,15 @@ def ensure_packages(requirements=REQUIREMENTS, stamp=STAMP):
         fail("Couldn't install the packages. Check the internet connection and run this again.")
     with open(stamp, "w") as f:
         f.write(wanted)
+
+
+def ensure_portaudio():
+    """sounddevice (the microphone) needs the system's PortAudio library on Linux."""
+    import ctypes.util
+    if not IS_LINUX or ctypes.util.find_library("portaudio"):
+        return
+    if not apt_install("libportaudio2"):
+        fail("The microphone library is missing. Install it once with:  sudo apt install -y libportaudio2")
 
 
 def ensure_pi_autostart():
@@ -233,6 +240,7 @@ def main():
 
     ensure_venv()
     ensure_packages()
+    ensure_portaudio()
     if test:
         run_tests(args)
     if pi and autostart:
