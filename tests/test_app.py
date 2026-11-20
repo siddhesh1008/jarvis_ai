@@ -129,6 +129,12 @@ def test_wake_loop_runs_a_session_after_the_wake_word(make_app, question):
     wake = WakeOnce()
     app.run(wake)
     assert wake.calls == 4 and wake.closed and not mic.started
+    # the model is preloaded at start and again at every wake word, while you're still talking
+    import time
+    deadline = time.time() + 2
+    while brain.warm_ups < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert brain.warm_ups == 2
 
 
 @pytest.mark.parametrize("text,expected", [

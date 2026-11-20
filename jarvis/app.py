@@ -26,7 +26,7 @@ DISMISS = {"never mind", "nevermind", "stop", "cancel", "thats all", "that is al
 
 
 def log(msg):
-    print(f"[jarvis] {msg}", flush=True)
+    print(f"[jarvis {time.strftime('%H:%M:%S')}] {msg}", flush=True)    # times help match the log to events
 
 
 def is_dismissal(text):
@@ -106,6 +106,8 @@ class Jarvis:
                 frame = self.mic.read(timeout=0.5)
                 if frame is not None and wake.process(frame):
                     log("Wake word heard.")
+                    # get the model ready while you're still talking (it may have been unloaded)
+                    threading.Thread(target=self._warm_up, daemon=True).start()
                     log(f"Session ended: {self.session()}")
                     self.mic.clear()
         except KeyboardInterrupt:

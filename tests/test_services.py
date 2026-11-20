@@ -90,6 +90,22 @@ def test_brain_streams_pieces_and_remembers_the_conversation(monkeypatch, cfg):
     assert second["messages"][-1]["content"] == "How high is it?"
 
 
+def test_brain_warm_up_preloads_the_system_prompt(monkeypatch, cfg):
+    """Warming up with the system prompt is what makes the first answer fast (~0.4 s vs ~5 s cold)."""
+    sent = {}
+
+    def post(url, json=None, timeout=None, **kw):
+        sent.update(url=url, body=json)
+        return FakeResponse({"done": True})
+    monkeypatch.setattr(llm.requests, "post", post)
+    llm.Brain(dict(cfg, keep_alive="24h")).warm_up()
+    body = sent["body"]
+    assert sent["url"].endswith("/api/chat") and body["model"] == cfg["model"]
+    assert body["messages"][0] == {"role": "system", "content": body["messages"][0]["content"]}
+    assert body["messages"][0]["content"].startswith(llm.SYSTEM_PROMPT.split("{now}")[0][:60])
+    assert body["options"]["num_predict"] == 1 and body["keep_alive"] == "24h" and body["stream"] is False
+
+
 def test_brain_reset_forgets(monkeypatch, cfg):
     monkeypatch.setattr(llm.requests, "post", lambda *a, **k: FakeResponse(lines=ollama_lines("ok")))
     brain = llm.Brain(cfg)

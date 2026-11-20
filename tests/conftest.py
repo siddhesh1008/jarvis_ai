@@ -85,6 +85,7 @@ class FakeBrain:
         self.error = error
         self.questions = []
         self.resets = 0
+        self.warm_ups = 0
 
     def reset(self):
         self.resets += 1
@@ -97,7 +98,7 @@ class FakeBrain:
             yield word + " "
 
     def warm_up(self):
-        pass
+        self.warm_ups += 1
 
 
 class FakeClock:
