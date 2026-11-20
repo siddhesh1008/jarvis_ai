@@ -50,6 +50,9 @@ change `wake_threshold` (lower = wakes more easily). You can train your own mode
 openWakeWord's training notebook and put it in `models/` (see `jarvis/wakeword.py`).
 In a terminal, pressing **Enter** also wakes Jarvis.
 
+**Mic inside Sky Radar's enclosure?** It needs an opening to hear you: print the shell with the mic port
+from [`hardware/`](hardware/README.md) (the wake word went from 0.07 to 0.99 with it).
+
 ## 3. Raspberry Pi
 
 ```
@@ -132,6 +135,7 @@ jarvis/
   screen.py             the round window
 models/                 wake word models (downloaded by run.py, git-ignored)
 server/                 Docker services for the P5 (speech-to-text now; text-to-speech later)
+hardware/               mic port for the enclosure: printable shell + fitting guide (hardware/README.md)
 tests/                  automated tests (+ fixtures/: recorded "Hey Jarvis", "Jarvis", a question, other speech)
 ```
 
